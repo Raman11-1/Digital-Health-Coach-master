@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+pymongo
+pydantic
+pytest
+python-jose 
+bcrypt
+requests
+pyJWT
