@@ -35,6 +35,22 @@ def health():
     return {"status": "ok"}
 
 
+# TEMPORARY diagnostic route — calls Mistral directly and reports the real
+# exception. Production logs aren't reachable from here, and the LLM calls
+# are failing near-instantly on Render while working fine locally, so this
+# is the fastest way to see the actual error. Remove once diagnosed.
+@app.get("/debug/llm-check")
+def debug_llm_check():
+    from core.llm_client import generate_text
+    import time
+    t0 = time.time()
+    try:
+        out = generate_text("Say OK")
+        return {"ok": True, "elapsed": time.time() - t0, "output": out}
+    except Exception as e:
+        return {"ok": False, "elapsed": time.time() - t0, "error_type": type(e).__name__, "error": str(e)}
+
+
 # include all routers
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(plan_diet_router, prefix="/api/plan_diet", tags=["plan_diet"])
