@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { login, fetchProfile } from "../../services/api";
+import { login } from "../../services/api";
 import { setToken, clearToken } from "../../services/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import axios from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,36 +30,10 @@ export default function LoginPage() {
       // 2. Save token
       setToken(token);
 
-      // 3. Set axios default header for future calls
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // 4. Try to get profile from backend
-      try {
-        const profileRes = await fetchProfile();
-
-        // If profile exists and has required fields → go to plan
-        const profile = profileRes.data;
-        if (
-          profile &&
-          profile.name &&
-          profile.current_weight !== undefined &&
-          profile.training_preference
-        ) {
-          router.push("/plan");
-        } else {
-          // Profile exists but missing fields → send to profile
-          router.push("/profile");
-        }
-      } catch (profileErr: any) {
-        // If 404 or profile not found → send to profile
-        if (profileErr.response?.status === 404) {
-          router.push("/profile");
-        } else {
-          // Other errors: clear token + show error
-          clearToken();
-          setError("Error checking profile. Try logging in again.");
-        }
-      }
+      // 3. Always land on the profile page after signing in — it shows
+      // whatever's already saved (editable) and moves on to the plan once
+      // the user confirms/saves it.
+      router.push("/profile");
     } catch (loginErr: any) {
       clearToken(); // ensure no token left
       setError(

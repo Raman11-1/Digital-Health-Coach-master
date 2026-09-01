@@ -1,27 +1,69 @@
 "use client";
 
-import { useState } from "react";
-import { saveProfile } from "../../services/api";
+import { useEffect, useState } from "react";
+import { saveProfile, fetchProfile } from "../../services/api";
 import { useApi } from "../../hooks/useApi";
 import { useRouter } from "next/navigation";
 import Toast from "../../components/Toast"; // toast component we will use
+import ProtectedPage from "../../components/Protected";
 
-export default function ProfileForm() {
+const emptyForm = {
+  name: "",
+  age: 0,
+  height: 0,
+  current_weight: 0,
+  weight_goal: 0,
+  fitness_goal: "mix",
+  training_preference: "",
+  start_date: "",
+};
+
+export default function ProfilePage() {
+  return (
+    <ProtectedPage>
+      <ProfileForm />
+    </ProtectedPage>
+  );
+}
+
+function ProfileForm() {
   const { callApi, loading } = useApi();
   const router = useRouter();
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState("");
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const [form, setForm] = useState({
-    name: "",
-    age: 0,
-    height: 0,
-    current_weight: 0,          
-    weight_goal: 0,
-    fitness_goal: "mix",
-    training_preference: "",     
-    start_date: "",
-  });
+  const [form, setForm] = useState(emptyForm);
+
+  // Load whatever profile is already saved so the form is editable, not
+  // blank, every time the user comes back to this page.
+  useEffect(() => {
+    const loadExisting = async () => {
+      try {
+        const res = await fetchProfile();
+        const p = res.data || {};
+        setForm({
+          name: p.name ?? emptyForm.name,
+          age: p.age ?? emptyForm.age,
+          height: p.height ?? emptyForm.height,
+          current_weight: p.current_weight ?? emptyForm.current_weight,
+          weight_goal: p.weight_goal ?? emptyForm.weight_goal,
+          fitness_goal: p.fitness_goal ?? emptyForm.fitness_goal,
+          training_preference: p.training_preference ?? emptyForm.training_preference,
+          start_date: p.start_date ?? emptyForm.start_date,
+        });
+      } catch (err: any) {
+        // 404 just means this user hasn't created a profile yet — that's
+        // the normal new-user case, not an error.
+        if (err.response?.status !== 404) {
+          console.error("Failed to load existing profile:", err);
+        }
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    loadExisting();
+  }, []);
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -50,6 +92,19 @@ export default function ProfileForm() {
     }, 1200);
   };
 
+  if (initialLoading) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <svg className="animate-spin h-8 w-8 text-purple-600" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      </div>
+    );
+  }
+
+  const isEditing = !!form.name;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 page-transition">
       {showToast && <Toast message="Profile saved successfully!" />}
@@ -64,7 +119,11 @@ export default function ProfileForm() {
           <span className="text-4xl">👤</span>
         </div>
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Profile</h2>
-        <p className="text-gray-600">Tell us about yourself to personalize your experience</p>
+        <p className="text-gray-600">
+          {isEditing
+            ? "Update your details any time — your AI plan adapts to changes."
+            : "Tell us about yourself to personalize your experience"}
+        </p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -208,7 +267,7 @@ export default function ProfileForm() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            {loading ? "Saving..." : "Save Profile & Continue"}
+            {loading ? "Saving..." : isEditing ? "Update Profile & Continue" : "Save Profile & Continue"}
           </button>
         </form>
       </div>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getToken, clearToken } from "../services/auth";
-import { fetchCurrentUser, fetchProfile } from "../services/api";
+import { fetchCurrentUser } from "../services/api";
 
 export default function Home() {
   const router = useRouter();
@@ -12,36 +12,23 @@ export default function Home() {
     const checkStatus = async () => {
       const token = getToken();
 
-      // If no token at all → go to signup
+      // If no token at all → go to login
       if (!token) {
-        router.push("/signup");
+        router.push("/login");
         return;
       }
 
       try {
-        // 1️⃣ Confirm token is valid with backend
+        // Confirm the token is still valid, then always land on the profile
+        // page — it shows whatever's saved (editable) and moves on to the
+        // plan once the user confirms it. A missing profile is not an error
+        // here; the profile page handles that case itself.
         await fetchCurrentUser();
-
-        // 2️⃣ Check if profile exists
-        const profileRes = await fetchProfile();
-        const profile = profileRes.data;
-
-        // If profile is missing any required field → profile page
-        if (
-          !profile ||
-          !profile.name ||
-          !profile.current_weight ||
-          !profile.training_preference
-        ) {
-          router.push("/profile");
-        } else {
-          // If profile exists → plan page
-          router.push("/plan");
-        }
+        router.push("/profile");
       } catch (err) {
-        // Anything failed: token invalid or backend error → logout & signup
+        // Token invalid/expired → clear it and send them to log back in.
         clearToken();
-        router.push("/signup");
+        router.push("/login");
       }
     };
 
