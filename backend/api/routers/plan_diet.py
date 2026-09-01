@@ -22,7 +22,12 @@ def generate_plan_route(user=Depends(get_current_user)):
     # save in DB
     save_plan({"user_id": user["id"], "plan": plan_data})
 
-    return {"plan": plan_data.get("workout", []), "diet": plan_data.get("diet_text", "")}
+    # Same shape as GET below — keep both endpoints consistent for the frontend.
+    return {
+        "plan": plan_data.get("workout", []),
+        "diet": plan_data.get("diet", {}),
+        "diet_text": plan_data.get("diet_text", ""),
+    }
 
 # GET to fetch existing plan
 @router.get("/")

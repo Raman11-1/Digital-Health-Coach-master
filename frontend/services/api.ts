@@ -91,3 +91,6 @@ export const fetchProgress = () => API.get("/progress/");
 
 // Fetch plan + diet for the user
 export const fetchPlanDiet = () => API.get("/plan_diet/");
+
+// Ask the AI to generate a fresh plan + diet (overwrites the stored one)
+export const regeneratePlanDiet = () => API.post("/plan_diet/");

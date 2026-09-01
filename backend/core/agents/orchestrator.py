@@ -104,13 +104,20 @@ def summarize_logs(logs: list) -> str:
         return "No logs available yet."
 
     lines = []
-    for log in logs[-7:]:
+    for log in sorted(logs, key=lambda l: l.get("date", ""))[-7:]:
         date = log.get("date")
         weight = log.get("weight")
         mood = log.get("mood")
-        workout_done = log.get("workout_done")
+        activities = log.get("activities") or []
+        if activities:
+            activity_desc = ", ".join(
+                f"{a.get('type', 'activity')} ({a.get('duration', 0)} min)"
+                for a in activities
+            )
+        else:
+            activity_desc = "none logged"
         lines.append(
-            f"Date: {date}, Workout Done: {workout_done}, Weight: {weight}, Mood: {mood}."
+            f"Date: {date}, Activities: {activity_desc}, Weight: {weight}, Mood: {mood}."
         )
 
     return "\n".join(lines)
