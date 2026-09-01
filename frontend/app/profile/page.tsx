@@ -83,6 +83,20 @@ function ProfileForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Mirrors the backend's cross-field check (api/routers/profile.py):
+    // a weight-loss goal only makes sense if the target is below the
+    // current weight. Catch it here for instant feedback, no round trip.
+    if (
+      form.fitness_goal === "weight_loss" &&
+      Number(form.weight_goal) >= Number(form.current_weight)
+    ) {
+      setError(
+        `Your goal is set to weight loss, so your weight goal (${form.weight_goal}kg) should be lower than your current weight (${form.current_weight}kg).`
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {

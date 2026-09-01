@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # [FIX 1] Import save_plan so we can store the generated plan
 from db.crud import upsert_user_profile, get_profile_by_user, save_plan
@@ -43,6 +43,20 @@ class Profile(BaseModel):
         if parsed < earliest or parsed > latest:
             raise ValueError("start_date must be between 2000-01-01 and 2 years from today")
         return v
+
+    @model_validator(mode="after")
+    def validate_goal_direction(self):
+        # A "weight loss" goal only makes sense if the target is actually
+        # lower than where they're starting from — e.g. current=20kg,
+        # goal=45kg with fitness_goal="weight_loss" is self-contradictory.
+        # Other goals (strength/mix) don't imply a direction, so they're
+        # left unrestricted.
+        if self.fitness_goal == "weight_loss" and self.weight_goal >= self.current_weight:
+            raise ValueError(
+                f"Your goal is set to weight loss, so your weight goal ({self.weight_goal}kg) "
+                f"should be lower than your current weight ({self.current_weight}kg)."
+            )
+        return self
 
 
 # Create or update the profile AND generate the plan
