@@ -18,22 +18,26 @@ function AnalyzeContent() {
   const { callApi, loading } = useApi();
   const router = useRouter();
   const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState("");
 
- const handleAnalyze = async () => {
-  setAnalyzing(true);
-  const res = await callApi(analyze);
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setError("");
+    const res = await callApi(analyze);
 
-  // example: store the returned name if you want
- if (res) {
-  const userName = res.data.user?.name;
-  console.log("User name:", userName);
-}
+    if (!res) {
+      setAnalyzing(false);
+      setError(
+        "Analysis failed. The server may be waking up from idle, or the AI service is temporarily unavailable — please try again."
+      );
+      return;
+    }
 
-  setTimeout(() => {
-    setAnalyzing(false);
-    router.push("/progress");
-  }, 1000);
-};
+    setTimeout(() => {
+      setAnalyzing(false);
+      router.push("/progress");
+    }, 1000);
+  };
 
 
   return (
@@ -106,6 +110,13 @@ function AnalyzeContent() {
           {(loading || analyzing) && (
             <div className="mt-6 text-center text-gray-600 animate-pulse">
               Our AI is working its magic... This may take a moment
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg flex items-center">
+              <span className="text-2xl mr-3">⚠️</span>
+              <span>{error}</span>
             </div>
           )}
         </div>

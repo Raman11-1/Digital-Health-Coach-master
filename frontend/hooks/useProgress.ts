@@ -9,8 +9,11 @@ export const useProgress = () => {
   const [latestDecision, setLatestDecision] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadProgress = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetchProgress();
       const data = res.data;
@@ -21,6 +24,7 @@ export const useProgress = () => {
       setStats(data.stats || null);
     } catch (err) {
       console.error("Failed to fetch progress:", err);
+      setError("Couldn't load your progress. The server may be waking up from idle — please try again.");
     } finally {
       setLoading(false);
     }
@@ -30,6 +34,6 @@ export const useProgress = () => {
     loadProgress();
   }, []);
 
-  return { logs, plans, latestDecision, stats, loading };
+  return { logs, plans, latestDecision, stats, loading, error, reload: loadProgress };
 };
 

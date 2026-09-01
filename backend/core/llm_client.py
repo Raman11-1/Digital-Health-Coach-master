@@ -7,33 +7,38 @@ BASE_URL = "https://api.mistral.ai/v1"
 def generate_text(prompt: str) -> str:
     """
     Calls the Mistral AI endpoint and returns the generated text.
+
+    Raises RuntimeError on any failure (network, auth, empty response) so
+    callers can decide how to degrade gracefully instead of accidentally
+    saving/displaying a raw error string as if it were real AI output.
     """
+    url = f"{BASE_URL}/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {LLM_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": "You are a helpful fitness coach AI."},
+            {"role": "user",   "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
     try:
-        url = f"{BASE_URL}/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {LLM_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "model": MODEL_NAME,
-            "messages": [
-                {"role": "system", "content": "You are a helpful fitness coach AI."},
-                {"role": "user",   "content": prompt}
-            ],
-            "temperature": 0.7
-        }
-
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
         data = response.json()
-
-        if "choices" in data and len(data["choices"]) > 0:
-            content = data["choices"][0]["message"]["content"].strip()
-            return content
-
-        return "[Mistral: No output returned]"
-
     except Exception as e:
-        return f"[Mistral LLM error: {str(e)}]"
+        print(f"[llm_client] Mistral call failed: {e}")
+        raise RuntimeError(f"LLM call failed: {e}") from e
+
+    choices = data.get("choices") or []
+    if not choices:
+        print(f"[llm_client] Mistral returned no choices: {data}")
+        raise RuntimeError("LLM returned no output")
+
+    return choices[0]["message"]["content"].strip()

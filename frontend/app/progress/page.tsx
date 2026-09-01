@@ -13,7 +13,7 @@ export default function ProgressPage() {
 }
 
 function ProgressContent() {
-  const { logs, plans, loading, latestDecision, stats } = useProgress();
+  const { logs, plans, loading, latestDecision, stats, error, reload } = useProgress();
 
   if (loading) {
     return (
@@ -23,6 +23,24 @@ function ProgressContent() {
             <span className="text-6xl">💪</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading your progress...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-12 text-center max-w-md">
+          <span className="text-6xl mb-4 inline-block">⚠️</span>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Couldn't load your progress</h3>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={reload}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );

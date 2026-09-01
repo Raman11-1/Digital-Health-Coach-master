@@ -31,11 +31,20 @@ def run_analyze_adapt(user_id: str) -> Dict[str, Any]:
     # 3) Reasoning text and workout/diet plan are independent LLM calls —
     # run them concurrently instead of back-to-back to roughly halve latency.
     plan_data = None
+    reasoning_output = None
     with ThreadPoolExecutor(max_workers=2) as executor:
         reasoning_future = executor.submit(generate_text, prompt)
         plan_future = executor.submit(generate_workout_and_diet, profile)
 
-        reasoning_output = reasoning_future.result()
+        try:
+            reasoning_output = reasoning_future.result()
+        except Exception as e:
+            print("Reasoning generation failed:", str(e))
+            reasoning_output = (
+                "We couldn't generate fresh AI insights right now "
+                "(the AI service may be busy). Please try analyzing again in a moment."
+            )
+
         try:
             plan_data = plan_future.result()
         except Exception as e:

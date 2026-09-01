@@ -61,18 +61,19 @@ REQUIRED SCHEMA:
 }}
 """
     # 1. Get Text from LLM
-    llm_output = generate_text(prompt)
-    
-    # DEBUG: Print what the AI actually sent so we can see errors in terminal
-    print(f"--- LLM RAW OUTPUT ---\n{llm_output}\n----------------------")
-
-    # 2. Clean and Extract
-    clean_str = extract_json_str(llm_output)
+    try:
+        llm_output = generate_text(prompt)
+        # DEBUG: Print what the AI actually sent so we can see errors in terminal
+        print(f"--- LLM RAW OUTPUT ---\n{llm_output}\n----------------------")
+        clean_str = extract_json_str(llm_output)
+    except Exception as e:
+        print(f"LLM call failed while generating plan: {e}")
+        clean_str = ""
 
     try:
         # ATTEMPT 1: Standard JSON parsing (Expects double quotes)
         data = json.loads(clean_str)
-        
+
     except json.JSONDecodeError:
         print("Standard JSON parsing failed. Trying Python eval...")
         try:
@@ -80,12 +81,12 @@ REQUIRED SCHEMA:
             data = ast.literal_eval(clean_str)
         except Exception as e:
             print(f"CRITICAL PARSING ERROR: {e}")
-            # Fallback only if BOTH methods fail
+            # Fallback only if BOTH methods fail (or the LLM call itself failed)
             data = {
                 "workout": [],
                 "diet": {
-                    "breakfast": ["AI Error - Could not parse plan"],
-                    "lunch": ["Please try regenerating"],
+                    "breakfast": ["Couldn't generate a new plan right now"],
+                    "lunch": ["Please try again in a moment"],
                     "dinner": [],
                     "snacks": []
                 }

@@ -5,12 +5,12 @@ import { saveProfile } from "../../services/api";
 import { useApi } from "../../hooks/useApi";
 import { useRouter } from "next/navigation";
 import Toast from "../../components/Toast"; // toast component we will use
-import axios from "axios";
 
 export default function ProfileForm() {
   const { callApi, loading } = useApi();
   const router = useRouter();
   const [showToast, setShowToast] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -30,33 +30,35 @@ export default function ProfileForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
 
-    try {
-      // 1️⃣ Save profile
-      await callApi(() => saveProfile(form));
+    // Saving the profile already generates and saves the initial plan on the
+    // backend (see api/routers/profile.py) — no need for a second request here.
+    const res = await callApi(() => saveProfile(form));
 
-      // 2️⃣ Show toast
-      setShowToast(true);
-
-      // 3️⃣ Call backend to generate plan
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE}/plan_diet/`
+    if (!res) {
+      setError(
+        "Couldn't save your profile. The server may be waking up from idle — please try again in a few seconds."
       );
-
-      // 4️⃣ After little delay, redirect to plan page
-      setTimeout(() => {
-        setShowToast(false);
-        router.push("/plan");
-      }, 1200);
-
-    } catch (error) {
-      console.error("Profile save or plan generation failed:", error);
+      return;
     }
+
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+      router.push("/plan");
+    }, 1200);
   };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 page-transition">
       {showToast && <Toast message="Profile saved successfully!" />}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg flex items-center">
+          <span className="text-2xl mr-3">⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
       <div className="text-center mb-8">
         <div className="inline-block p-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full mb-4">
           <span className="text-4xl">👤</span>

@@ -1,9 +1,13 @@
 import axios from "axios";
-import { getToken } from "./auth";
+import { getToken, clearToken } from "./auth";
 
 // Create axios instance with baseURL
 const API = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE,
+  // Generous timeout: the free-tier backend can take a while to wake from
+  // idle, but requests should still fail with a clear error instead of
+  // hanging the UI forever.
+  timeout: 45000,
 });
 
 // Automatically attach token
@@ -14,6 +18,25 @@ API.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// If a token is invalid/expired, stop letting every page fail silently —
+// clear it and send the user back to login.
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    if (
+      (status === 401 || status === 403) &&
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login" &&
+      window.location.pathname !== "/signup"
+    ) {
+      clearToken();
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ===========================
 // AUTH
