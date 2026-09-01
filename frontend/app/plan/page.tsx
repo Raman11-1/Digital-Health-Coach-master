@@ -80,20 +80,46 @@ export default function PlanDietPage() {
     }
   };
 
+  // The AI returns diet sections in all sorts of shapes — flat strings,
+  // lists of strings, or (very often) nested objects with their own
+  // labels/breakdowns. Flatten anything into readable text instead of
+  // assuming one fixed shape (a bare object rendered as text otherwise
+  // shows up as the literal string "[object Object]").
+  const stringifyDietValue = (value: any): string => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    if (Array.isArray(value)) {
+      return value.map(stringifyDietValue).filter(Boolean).join(", ");
+    }
+    if (typeof value === "object") {
+      const label = value.meal || value.food || value.name || value.snack || value.item;
+      const restStr = Object.entries(value)
+        .filter(([k]) => !["meal", "food", "name", "snack", "item"].includes(k))
+        .map(([, v]) => stringifyDietValue(v))
+        .filter(Boolean)
+        .join(", ");
+      if (label && restStr) return `${label} (${restStr})`;
+      return label ? String(label) : restStr;
+    }
+    return String(value);
+  };
+
   // --- HELPER: Smart Rendering for Diet Items ---
   const renderDietItem = (item: any) => {
-    // Case 1: The structure seen in your image { "meal": "Breakfast", "foods": [...] }
-    if (typeof item === 'object' && item.meal) {
-      const foodText = Array.isArray(item.foods) ? item.foods.join(", ") : item.foods;
+    // Case 1: { "meal": "Breakfast", "foods": [...] }
+    if (typeof item === 'object' && item !== null && item.meal) {
+      const foodText = Array.isArray(item.foods)
+        ? item.foods.map(stringifyDietValue).join(", ")
+        : stringifyDietValue(item.foods);
       return (
         <span>
           <strong className="text-indigo-700">{item.meal}:</strong> <span className="text-gray-700">{foodText}</span>
         </span>
       );
     }
-    
+
     // Case 2: Object with 'food' key { "food": "Chicken", "calories": 300 }
-    if (typeof item === 'object' && item.food) {
+    if (typeof item === 'object' && item !== null && item.food) {
       return (
         <span>
           <span className="font-medium text-gray-800">{item.food}</span>
@@ -102,7 +128,12 @@ export default function PlanDietPage() {
       );
     }
 
-    // Case 3: Simple String
+    // Case 3: Any other object shape — flatten it
+    if (typeof item === 'object' && item !== null) {
+      return <span className="text-gray-700">{stringifyDietValue(item)}</span>;
+    }
+
+    // Case 4: Simple string/number
     return <span className="text-gray-700">{String(item)}</span>;
   };
 
@@ -112,7 +143,7 @@ export default function PlanDietPage() {
       <div className="flex flex-wrap gap-4 mt-2">
         {Object.entries(macrosObj).map(([k, v], i) => (
           <div key={i} className="bg-purple-50 px-3 py-2 rounded-lg text-sm border border-purple-100">
-            <span className="capitalize font-semibold text-purple-700">{k}:</span> {String(v)}
+            <span className="capitalize font-semibold text-purple-700">{k}:</span> {stringifyDietValue(v)}
           </div>
         ))}
       </div>
@@ -202,7 +233,7 @@ export default function PlanDietPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-gray-600">{String(exercisesData || "Rest / Activity")}</p>
+                        <p className="text-gray-600">{stringifyDietValue(exercisesData) || "Rest / Activity"}</p>
                       )}
                     </div>
                   </div>
@@ -227,10 +258,10 @@ export default function PlanDietPage() {
                     {key.replace(/_/g, " ")}
                   </h3>
                   
-                  {/* Logic 1: If it's the Macros object */}
-                  {key.toLowerCase().includes('macro') && typeof val === 'object' && !Array.isArray(val) ? (
+                  {/* Logic 1: Any plain key/value object (macros, hydration, notes, ...) */}
+                  {typeof val === 'object' && val !== null && !Array.isArray(val) ? (
                     renderMacros(val)
-                  ) : 
+                  ) :
                   /* Logic 2: If it's a List (Meal Plan) */
                   Array.isArray(val) ? (
                     <ul className="space-y-3">
@@ -244,7 +275,7 @@ export default function PlanDietPage() {
                   ) : (
                   /* Logic 3: Fallback for strings (Calorie Intake) */
                     <p className="text-gray-700 font-medium">
-                      {typeof val === 'string' ? val : JSON.stringify(val)}
+                      {String(val)}
                     </p>
                   )}
                 </div>

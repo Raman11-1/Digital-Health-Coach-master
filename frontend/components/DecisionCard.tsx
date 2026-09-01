@@ -11,9 +11,12 @@ export default function DecisionCard({ reasoning }: DecisionCardProps) {
   // to avoid duplication with the card header.
   const cleanText = reasoning.replace(/AI Reasoning\s*Insight\s*/i, "").trim();
 
-  // 2. Parse the sections: Split by the numbered list pattern (e.g., "1. **Title**")
-  // This Regex looks for a new line, followed by a number, a dot, and bold markers.
-  const sections = cleanText.split(/\n(?=\d+\.\s\*\*)/).filter(Boolean);
+  // 2. Parse the sections: split on a section heading, which the AI renders
+  // inconsistently as either "1. **Title**" or "- **Title**".
+  const sections = cleanText
+    .split(/\n(?=(?:\d+\.|-)\s*\*\*)/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s !== "---");
 
   // If parsing fails (e.g. old data format), we use this fallback
   const isOldFormat = sections.length <= 1 && !cleanText.includes("**");
@@ -43,16 +46,18 @@ export default function DecisionCard({ reasoning }: DecisionCardProps) {
         {!isOldFormat ? (
           <div className="space-y-6">
             {sections.map((section, idx) => {
-              // Extract the Title (text between ** and **)
-              const titleMatch = section.match(/\d+\.\s\*\*(.*?)\*\*:?/);
-              const title = titleMatch ? titleMatch[1] : `Point ${idx + 1}`;
+              // Extract the Title (text between ** and **), stripping any
+              // leading emoji so it doesn't duplicate the icon added below.
+              const titleMatch = section.match(/(?:\d+\.|-)\s*\*\*(.*?)\*\*:?/);
+              const rawTitle = titleMatch ? titleMatch[1] : `Point ${idx + 1}`;
+              const title = rawTitle.replace(/^[^\w]+/, "").replace(/:\s*$/, "").trim() || rawTitle;
 
               // Extract the Body Lines (everything after the title line)
               const contentLines = section
                 .replace(/.*\n?/, "") // Remove the first line (title)
                 .split("\n")          // Split rest by newlines
                 .map(line => line.trim())
-                .filter(line => line.length > 0);
+                .filter(line => line.length > 0 && line !== "---");
 
               // Assign icons based on keywords in the title
               let icon = "📌";
