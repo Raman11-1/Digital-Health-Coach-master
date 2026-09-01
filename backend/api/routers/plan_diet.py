@@ -13,7 +13,11 @@ def generate_plan_route(user=Depends(get_current_user)):
     profile = get_profile_by_user(user["id"])
     
     # generate using planner only
-    plan_data = generate_workout_and_diet(profile or {})
+    try:
+        plan_data = generate_workout_and_diet(profile or {})
+    except Exception as e:
+        print(f"Plan generation failed: {e}")
+        plan_data = {"workout": [], "diet": {}, "diet_text": ""}
 
     # save in DB
     save_plan({"user_id": user["id"], "plan": plan_data})

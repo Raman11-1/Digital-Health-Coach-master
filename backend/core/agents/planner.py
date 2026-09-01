@@ -17,8 +17,30 @@ def extract_json_str(text: str) -> str:
     
     if start != -1 and end != -1:
         return text[start : end + 1]
-    
+
     return text
+
+
+def _stringify_diet_value(value) -> str:
+    """
+    Diet sections come back from the LLM as flat strings, lists of strings,
+    or (very often in practice) richer nested lists/dicts (e.g. a meal with
+    an "items" breakdown). Flatten any of these into readable text instead
+    of assuming one fixed shape.
+    """
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return ", ".join(_stringify_diet_value(item) for item in value)
+    if isinstance(value, dict):
+        label = value.get("meal") or value.get("food") or value.get("name") or value.get("snack")
+        rest = {k: v for k, v in value.items() if k not in ("meal", "food", "name", "snack")}
+        rest_str = ", ".join(_stringify_diet_value(v) for v in rest.values())
+        if label and rest_str:
+            return f"{label} ({rest_str})"
+        return str(label) if label else rest_str
+    return str(value)
+
 
 def generate_workout_and_diet(profile: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -107,16 +129,21 @@ REQUIRED SCHEMA:
             "snacks": ["Healthy Choice"]
         }
 
-    # 4. Generate diet_text for frontend
+    # 4. Generate diet_text for frontend — defensive: the LLM's actual shape
+    # for each section varies a lot in practice, so never let formatting
+    # this crash the whole plan generation.
     diet_info = data.get("diet", {})
     diet_text = ""
-    
-    if isinstance(diet_info, dict):
-        for k, v in diet_info.items():
-            val_str = ", ".join(v) if isinstance(v, list) else str(v)
-            diet_text += f"{k.capitalize()}: {val_str}\n"
-    else:
-        diet_text = str(diet_info)
+
+    try:
+        if isinstance(diet_info, dict):
+            for k, v in diet_info.items():
+                diet_text += f"{k.capitalize()}: {_stringify_diet_value(v)}\n"
+        else:
+            diet_text = str(diet_info)
+    except Exception as e:
+        print(f"diet_text formatting failed: {e}")
+        diet_text = "See the structured diet plan above."
 
     return {
         "workout": data.get("workout", []),
