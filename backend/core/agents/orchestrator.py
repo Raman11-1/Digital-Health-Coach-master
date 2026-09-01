@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from core.llm_client import generate_text
 from db.crud import get_logs_by_user, save_decision, get_profile_by_user, save_plan
@@ -27,8 +28,18 @@ def run_analyze_adapt(user_id: str) -> Dict[str, Any]:
     # 2) Build LLM prompt for reasoning
     prompt = build_reasoning_prompt(profile, log_summary)
 
-    # 3) Call LLM to generate reasoning text
-    reasoning_output = generate_text(prompt)
+    # 3) Reasoning text and workout/diet plan are independent LLM calls —
+    # run them concurrently instead of back-to-back to roughly halve latency.
+    plan_data = None
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        reasoning_future = executor.submit(generate_text, prompt)
+        plan_future = executor.submit(generate_workout_and_diet, profile)
+
+        reasoning_output = reasoning_future.result()
+        try:
+            plan_data = plan_future.result()
+        except Exception as e:
+            print("Plan adaptation failed:", str(e))
 
     # 4) Save the decision to DB
     decision_doc = {
@@ -38,16 +49,12 @@ def run_analyze_adapt(user_id: str) -> Dict[str, Any]:
     }
     save_decision(decision_doc)
 
-    # Optionally adapt plan
-    try:
-        plan_data = generate_workout_and_diet(profile)
+    if plan_data is not None:
         save_plan({"user_id": user_id, "plan": plan_data})
-    except Exception as e:
-        print("Plan adaptation failed:", str(e))
 
     return {
         "reasoning": reasoning_output,
-        "plan": plan_data if "plan_data" in locals() else None,
+        "plan": plan_data,
     }
 
 

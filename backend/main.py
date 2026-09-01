@@ -8,17 +8,32 @@ from api.routers.analyze import router as analyze_router
 from api.routers.progress import router as progress_router
 from api.routers.plan_diet import router as plan_diet_router
 from api.routers.users import router as users_router
+from config import ALLOWED_ORIGINS
+from db.indexes import ensure_indexes
 
 app = FastAPI()
 
 # CORS (important for frontend communication)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # or ["http://localhost:3000"]
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def on_startup():
+    ensure_indexes()
+
+
+# Lightweight endpoint for uptime pings — keeps the free-tier instance from
+# spinning down, and doesn't touch Mongo so it stays fast even if the DB is slow.
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 # include all routers
 app.include_router(users_router, prefix="/api/users", tags=["users"])
