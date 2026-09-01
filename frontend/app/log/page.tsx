@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useLogs } from "../../hooks/useLogs"; // new hook
 import { useRouter } from "next/navigation";
 
+const TODAY = new Date().toISOString().split("T")[0];
+
 export default function LogForm() {
   const { addLog, loading, error } = useLogs();
   const router = useRouter();
 
-  const [logDate, setLogDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [logDate, setLogDate] = useState<string>(TODAY);
   const [weight, setWeight] = useState<number>(0);
   const [mood, setMood] = useState<number>(3);
   const [notes, setNotes] = useState<string>("");
@@ -47,7 +49,7 @@ export default function LogForm() {
       setTimeout(() => {
         setSuccess(false);
         // reset
-        setLogDate(new Date().toISOString().split("T")[0]);
+        setLogDate(TODAY);
         setWeight(0);
         setMood(3);
         setNotes("");
@@ -94,6 +96,7 @@ export default function LogForm() {
             <input
               type="date"
               value={logDate}
+              max={TODAY}
               onChange={(e) => setLogDate(e.target.value)}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
@@ -127,6 +130,8 @@ export default function LogForm() {
                 <input
                   type="number"
                   placeholder="Duration (min)"
+                  min={1}
+                  max={300}
                   value={act.duration || ""}
                   onChange={(e) => handleActivityChange(idx, "duration", Number(e.target.value))}
                   required
@@ -136,7 +141,9 @@ export default function LogForm() {
                 {/* Intensity */}
                 <input
                   type="number"
-                  placeholder="Intensity"
+                  placeholder="Intensity (0-10)"
+                  min={0}
+                  max={10}
                   value={act.intensity || ""}
                   onChange={(e) => handleActivityChange(idx, "intensity", Number(e.target.value))}
                   className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
@@ -162,6 +169,8 @@ export default function LogForm() {
               <input
                 type="number"
                 step="0.1"
+                min={20}
+                max={300}
                 value={weight || ""}
                 onChange={(e) => setWeight(Number(e.target.value))}
                 required

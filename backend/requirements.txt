@@ -3,8 +3,9 @@ uvicorn
 python-dotenv
 pymongo
 pydantic
+email-validator
 pytest
-python-jose 
+python-jose
 bcrypt
 requests
 pyJWT

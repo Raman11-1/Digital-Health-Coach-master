@@ -1,6 +1,7 @@
 // src/hooks/useLogs.ts
 import { useState } from "react";
 import { submitLog } from "../services/api";
+import { getErrorMessage } from "../utils/errors";
 
 export const useLogs = () => {
   const [loading, setLoading] = useState(false);
@@ -15,11 +16,7 @@ export const useLogs = () => {
       return res.data;
     } catch (err: any) {
       setLoading(false);
-      if (err.response && err.response.data) {
-        setError(err.response.data.detail || "Failed to save log");
-      } else {
-        setError("Failed to save log");
-      }
+      setError(getErrorMessage(err, "Failed to save log"));
       throw err;
     }
   };

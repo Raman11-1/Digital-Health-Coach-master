@@ -43,6 +43,17 @@ def get_recent_logs_by_user(user_id: str):
 def get_log_for_date(user_id: str, date: str):
     return logs.find_one({"user_id": user_id, "date": date})
 
+def get_latest_log_before(user_id: str, date: str):
+    """
+    Most recent log strictly before the given date — used as the baseline
+    for weight-consistency checks (date is an ISO "YYYY-MM-DD" string, so
+    lexicographic comparison matches chronological order).
+    """
+    return logs.find_one(
+        {"user_id": user_id, "date": {"$lt": date}},
+        sort=[("date", -1)],
+    )
+
 def update_daily_log(user_id: str, date: str, data: dict):
     return logs.update_one(
         {"user_id": user_id, "date": date},

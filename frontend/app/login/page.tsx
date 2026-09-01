@@ -5,6 +5,7 @@ import { login } from "../../services/api";
 import { setToken, clearToken } from "../../services/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getErrorMessage } from "../../utils/errors";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,9 +37,7 @@ export default function LoginPage() {
       router.push("/profile");
     } catch (loginErr: any) {
       clearToken(); // ensure no token left
-      setError(
-        loginErr.response?.data?.detail || "Login failed. Please try again."
-      );
+      setError(getErrorMessage(loginErr, "Login failed. Please try again."));
     } finally {
       setLoading(false);
     }

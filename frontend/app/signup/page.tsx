@@ -5,6 +5,7 @@ import { signup } from "../../services/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Toast from "../../components/Toast";
+import { getErrorMessage } from "../../utils/errors";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function SignupPage() {
         router.push("/login");
       }, 1800);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Signup failed. Please try again.");
+      setError(getErrorMessage(err, "Signup failed. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -74,11 +75,13 @@ export default function SignupPage() {
               name="password"
               type="password"
               required
+              minLength={8}
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
             />
+            <p className="text-xs text-gray-500 mt-1">At least 8 characters, with a letter and a number.</p>
           </div>
 
           <button

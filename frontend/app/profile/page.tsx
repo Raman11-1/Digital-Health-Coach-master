@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { saveProfile, fetchProfile } from "../../services/api";
-import { useApi } from "../../hooks/useApi";
 import { useRouter } from "next/navigation";
 import Toast from "../../components/Toast"; // toast component we will use
 import ProtectedPage from "../../components/Protected";
+import { getErrorMessage } from "../../utils/errors";
 
 const emptyForm = {
   name: "",
@@ -18,6 +18,16 @@ const emptyForm = {
   start_date: "",
 };
 
+// Mirrors the backend's Profile validation (api/routers/profile.py) so the
+// browser blocks obviously-invalid values before a round trip.
+const LIMITS = {
+  age: { min: 10, max: 100 },
+  height: { min: 50, max: 250 },
+  weight: { min: 20, max: 300 },
+};
+const MIN_START_DATE = "2000-01-01";
+const MAX_START_DATE = new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
 export default function ProfilePage() {
   return (
     <ProtectedPage>
@@ -27,7 +37,7 @@ export default function ProfilePage() {
 }
 
 function ProfileForm() {
-  const { callApi, loading } = useApi();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState("");
@@ -73,23 +83,29 @@ function ProfileForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    // Saving the profile already generates and saves the initial plan on the
-    // backend (see api/routers/profile.py) — no need for a second request here.
-    const res = await callApi(() => saveProfile(form));
-
-    if (!res) {
+    try {
+      // Saving the profile already generates and saves the initial plan on
+      // the backend (see api/routers/profile.py) — no second request needed.
+      await saveProfile(form);
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+        router.push("/plan");
+      }, 1200);
+    } catch (err: any) {
+      // A response means the server validated the request and rejected it
+      // (e.g. an out-of-range value) — show that reason specifically.
+      // No response means the request never completed (cold start/timeout).
       setError(
-        "Couldn't save your profile. The server may be waking up from idle — please try again in a few seconds."
+        err.response
+          ? getErrorMessage(err, "Couldn't save your profile.")
+          : "Couldn't save your profile. The server may be waking up from idle — please try again in a few seconds."
       );
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-      router.push("/plan");
-    }, 1200);
   };
 
   if (initialLoading) {
@@ -152,6 +168,8 @@ function ProfileForm() {
               <input
                 name="age"
                 type="number"
+                min={LIMITS.age.min}
+                max={LIMITS.age.max}
                 value={form.age || ""}
                 onChange={handleChange}
                 required
@@ -168,6 +186,8 @@ function ProfileForm() {
               <input
                 name="height"
                 type="number"
+                min={LIMITS.height.min}
+                max={LIMITS.height.max}
                 value={form.height || ""}
                 onChange={handleChange}
                 required
@@ -185,6 +205,8 @@ function ProfileForm() {
                 name="current_weight"
                 type="number"
                 step="0.1"
+                min={LIMITS.weight.min}
+                max={LIMITS.weight.max}
                 value={form.current_weight || ""}
                 onChange={handleChange}
                 required
@@ -201,6 +223,9 @@ function ProfileForm() {
               <input
                 name="weight_goal"
                 type="number"
+                step="0.1"
+                min={LIMITS.weight.min}
+                max={LIMITS.weight.max}
                 value={form.weight_goal || ""}
                 onChange={handleChange}
                 required
@@ -254,6 +279,8 @@ function ProfileForm() {
               <input
                 name="start_date"
                 type="date"
+                min={MIN_START_DATE}
+                max={MAX_START_DATE}
                 value={form.start_date}
                 onChange={handleChange}
                 required
