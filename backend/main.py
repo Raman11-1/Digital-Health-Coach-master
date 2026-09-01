@@ -41,14 +41,34 @@ def health():
 # is the fastest way to see the actual error. Remove once diagnosed.
 @app.get("/debug/llm-check")
 def debug_llm_check():
-    from core.llm_client import generate_text
+    from config import MODEL_NAME, LLM_PROVIDER
+    import requests as _requests
     import time
+    from config import LLM_API_KEY
+
     t0 = time.time()
+    url = "https://api.mistral.ai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": MODEL_NAME, "messages": [{"role": "user", "content": "Say OK"}], "temperature": 0.7}
     try:
-        out = generate_text("Say OK")
-        return {"ok": True, "elapsed": time.time() - t0, "output": out}
+        r = _requests.post(url, json=payload, headers=headers, timeout=20)
+        return {
+            "ok": r.status_code == 200,
+            "elapsed": time.time() - t0,
+            "resolved_model_name": MODEL_NAME,
+            "llm_provider": LLM_PROVIDER,
+            "api_key_len": len(LLM_API_KEY) if LLM_API_KEY else 0,
+            "status_code": r.status_code,
+            "body": r.text[:1000],
+        }
     except Exception as e:
-        return {"ok": False, "elapsed": time.time() - t0, "error_type": type(e).__name__, "error": str(e)}
+        return {
+            "ok": False,
+            "elapsed": time.time() - t0,
+            "resolved_model_name": MODEL_NAME,
+            "error_type": type(e).__name__,
+            "error": str(e),
+        }
 
 
 # include all routers
